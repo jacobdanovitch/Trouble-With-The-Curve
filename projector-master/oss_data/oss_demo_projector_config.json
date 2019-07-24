@@ -1,0 +1,12 @@
+{
+  "embeddings": [
+    {
+      "tensorName": "MLB FastText",
+      "tensorShape": [7026, 200],
+      "tensorPath": "projector-master/oss_data/fasttext_mlb_tensors.tsv",
+      "metadataPath": "projector-master/oss_data/fasttext_mlb_labels.tsv",
+      "bookmarksPath": "projector-master/oss_data/fasttext_mlb_bookmarks.txt"
+    }
+  ],
+  "modelCheckpointPath": "datasets"
+}

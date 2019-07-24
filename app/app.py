@@ -6,6 +6,7 @@ from flask import request
 from flask import Response
 from flask import jsonify
 from flask import url_for
+from flask import current_app
 
 from analyze import Classifier
 
@@ -83,9 +84,17 @@ def update_queue(res):
         cache_queue()
 
 @app.route('/')
-def hello_world():
+def index():
     return render_template('index.html')
 
+@app.route('/about')
+def about():
+    return "Coming soon"
+    
+
+@app.route('/embeddings')
+def embeddings():
+    return current_app.send_static_file('projector-master/embeddings.html')
 
 @app.route('/activations')
 def activations():
