@@ -1,0 +1,407 @@
+<!--
+A Simple Attention Visualizer for Text Classification,
+based on the attention visualizer by Abigail See, available at
+https://github.com/abisee/attn_vis
+-->
+
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Trouble With The Curve</title>
+  <meta name="description" content="">
+  <meta name="author" content="">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="{{ url_for('static', filename='external/d3.min.js')}}"></script>
+  <script src="{{ url_for('static', filename='external/jquery-3.1.0.min.js')}}"></script>
+  <script src="{{ url_for('static', filename='external/underscore-min.js')}}"></script>
+  <script src="{{ url_for('static', filename='external/sprintf.min.js')}}"></script>
+  <script src="{{ url_for('static', filename='external/semantic.min.js')}}"></script>
+  <link href="{{ url_for('static', filename='external/semantic.min.css')}}" rel="stylesheet" type="text/css">
+  <link href='http://fonts.googleapis.com/css?family=Cousine' rel='stylesheet' type='text/css'>
+
+  <style>
+    #wrap {
+      font-family: 'Cousine';
+      position: relative;
+      margin: 10px;
+      font-size: 15px;
+    }
+
+    .buttons {
+      margin: 20px 0;
+    }
+  </style>
+  <script>
+
+    // global variables
+    json_fname = "{{url_for('static', filename='app/attentions.json')}}" // file containing the text and the weights
+    example_json_fname = "{{url_for('static', filename='app/examples.json')}}"
+
+    greenhue = 151
+    yellowhue = 56
+    redhue = 0
+    cur_idx = 0 // define initial global data idx
+    max_len = 0
+
+    // do not use cache for data
+    $.ajaxSetup({
+      cache: false
+    });
+
+    function start() {
+      console.log("start")
+      load_and_render()
+
+      // Define a tooltip that we will use to display attention weight when you hover over a word
+      var tooltip = d3.select("body")
+        .append("div")
+        .style("position", "absolute")
+        .style("z-index", "10")
+        .style("visibility", "hidden")
+        .style("background", "white")
+        .style("font-size", "15px")
+        .style("color", "#ff8000")
+        .style("font-family", "Cousine")
+        .text("a simple tooltip");
+      gtooltip = tooltip // global
+    }
+
+    let examples;
+    let xhttp = window.XMLHttpRequest ? new XMLHttpRequest() : new ActiveXObject("Microsoft.XMLHTTP");
+
+    function load_and_render() {
+      // Retrieve the json data file and display the data
+      console.log("fetching " + json_fname + "...")
+
+      function json_fail(data) {
+        // Tell the user it failed to load
+        console.log("Fail to load the data.")
+        d3.select("#datafile").html('<font color="red">Failed to load ' + json_fname + "</font>")
+      }
+
+      $.getJSON(json_fname, function (data) {
+        all_data = data.slice(0)
+        initialize_filters(all_data)
+        render_data(data)
+      }).fail(json_fail);
+
+      $.getJSON(example_json_fname, function (data) {
+        examples = data;
+      });
+    }
+
+    function render_data(data) {
+      // Displays the data
+      console.log("Data loaded.")
+      d3.select("#datafile").html('<font color="09B509">Currently displaying: ' + json_fname + "</font>")
+      max_len = data.length
+      render_text(d3.select("#text"), data, cur_idx)
+      render_label(d3.select("#label"), data, cur_idx)
+      render_pred(d3.select("#pred"), data, cur_idx)
+      render_id(d3.select("#textid"), cur_idx)
+
+      d3.select("#next").on('click', handleClickNext(data))
+      d3.select("#last").on('click', handleClickLast(data))
+      d3.select("#reload").on('click', reload_all)
+      d3.select("#filter").on('click', filter_data(all_data))
+    }
+
+    function reload_all() {
+      cur_idx = 0
+      load_and_render()
+    }
+
+    function initialize_filters(data) {
+      // get options
+      var label_set = new Set()
+      var pred_set = new Set()
+      data.forEach(function (d) {
+        label_set.add(d.label)
+        pred_set.add(d.prediction)
+      })
+      var lfilter = $("#filter-label-select")
+      var pfilter = $("#filter-pred-select")
+      lfilter.html("")
+        .append("<option value=\"\">Labels</option>")
+      pfilter.html("")
+        .append("<option value=\"\">Predictions</option>")
+      for (let l of label_set) {
+        lfilter.append("<option value=\"" + l + "\">" + l + "</option>")
+      }
+      for (let p of pred_set) {
+        pfilter.append("<option value=\"" + p + "\">" + p + "</option>")
+      }
+      lfilter.dropdown();
+      pfilter.dropdown();
+    }
+
+    function filter_data(data) {
+      return function () {
+        var lvalues = $("#filter-label-select").dropdown('get value')
+        var pvalues = $("#filter-pred-select").dropdown('get value')
+        // filter on labels
+        if (lvalues.length > 0) {
+          var selected = new Set(lvalues)
+          data = data.filter(d => selected.has(d.label))
+        }
+        // filter on predictions
+        if (pvalues.length > 0) {
+          var selected = new Set(pvalues)
+          data = data.filter(d => selected.has(d.prediction))
+        }
+        if (data.length == 0) {
+          console.log("No data to show.")
+          show_data_empty_msg()
+        } else {
+          render_data(data)
+        }
+      }
+    }
+
+    function render_text(div, data, idx) {
+      var startix = 0;
+      var endix = data[idx].words.length
+      var attn_len = data[idx].words[0].length
+
+      div.html('') // flush
+      for (var i = startix; i < endix; i++) {
+        var word = data[idx].words[i] // a string
+        var attn_wt = data[idx].weights[i]
+        var background_color = toColor(attn_wt, redhue)
+        var css = 'background-color:' + background_color
+        css += ';display:inline'
+        var word_html = word + ' '
+
+        // write the sentence/word
+        var dnew = div.append('div');
+        dnew.attr('class', 'd')
+          .attr('style', css) // apply this style
+          .html(word_html)
+          // add interactivity for mouseover tooltip
+          .on('mouseover', getHandleMouseOver(attn_wt))
+          .on('mousemove', handleMouseMove)
+          .on('mouseout', handleMouseOut)
+      }
+    }
+
+    function render_label(div, data, idx) {
+      div.html(''); // flush
+      var dnew = div.append('div');
+      dnew.html(data[idx].label);
+    }
+
+    function render_pred(div, data, idx) {
+      div.html(''); // flush
+      var dnew = div.append('div');
+      dnew.html(data[idx].prediction);
+    }
+
+    function render_id(div, idx) {
+      div.html(''); // flush
+      var dnew = div.append('div');
+      dnew.html(idx + 1 + " / " + max_len);
+    }
+
+    function getHandleMouseOver(weight) {
+      return function () {
+        // Show a tooltip giving the weight value
+        gtooltip.text(round(weight, 3))
+        return gtooltip.style("visibility", "visible");
+      }
+    }
+
+    function handleMouseMove() {
+      return gtooltip.style("top", (d3.event.pageY - 20) + "px").style("left", (d3.event.pageX + 10) + "px");
+    }
+
+    function handleMouseOut() {
+      return gtooltip.style("visibility", "hidden");
+    }
+
+    function handleClickNext(data, idx) {
+      return function () {
+        if (cur_idx >= max_len - 1) {
+          return
+        }
+        cur_idx++
+        render_text(d3.select("#text"), data, cur_idx)
+        render_label(d3.select("#label"), data, cur_idx)
+        render_pred(d3.select("#pred"), data, cur_idx)
+        render_id(d3.select("#textid"), cur_idx);
+      }
+    }
+
+    function handleClickLast(data, idx) {
+      return function () {
+        if (cur_idx <= 0) {
+          return
+        }
+        cur_idx--
+        render_text(d3.select("#text"), data, cur_idx)
+        render_label(d3.select("#label"), data, cur_idx)
+        render_pred(d3.select("#pred"), data, cur_idx)
+        render_id(d3.select("#textid"), cur_idx);
+      }
+    }
+
+    function show_data_empty_msg() {
+      $('#no-data-msg').removeClass('hidden').on('click', function () {
+        $(this).closest('.message').addClass("hidden");
+      });
+    }
+
+    function round(x, dp) {
+      // round a float to dp decimal places
+      var power_of_10 = 10 ** dp
+      return Math.round(x * power_of_10) / power_of_10
+    }
+
+    function toColor(p, hue) {
+      // converts a scalar value p in [0,1] to a HSL color code string with base color hue
+      if (p < 0 || p > 1) {
+        throw sprintf("Error: p has value %.2f but should be in [0,1]", p)
+      }
+      var saturation = 100 // saturation percentage
+      p = 1 - p // invert so p=0 is light and p=1 is dark
+      var min_lightness = 10 // minimum percentage lightness, i.e. darkest possible color
+      var lightness = (min_lightness + p * (100 - min_lightness)) // lightness is proportional to p
+      return sprintf('hsl(%d,%s%%,%s%%)', hue, saturation, lightness)
+    }
+
+    function render(p) {
+      //let cur_idx = 0;
+      let data = [p]
+      console.log(data)
+      render_text(d3.select("#text"), data, cur_idx)
+      render_label(d3.select("#label"), data, cur_idx)
+      render_pred(d3.select("#pred"), data, cur_idx)
+      render_id(d3.select("#textid"), cur_idx);
+    }
+
+    function requestActivationMap(data, callback) {
+        xhttp.onreadystatechange = function () {
+          if (this.readyState == 4 && this.status == 200) {
+            const data = JSON.parse(this.responseText);
+            //console.log(data);
+            callback(data);
+          }
+        };
+        let url = `activations?text=${data.text}` 
+        if(data.label){
+          url = `${url}&label=${data.label}`
+        }
+
+        xhttp.open("GET", url, true);
+        xhttp.send();
+      }
+
+    async function handleUserSubmit(report, label) {
+      let data = {
+        'text': report,
+        'label': label
+      }
+      requestActivationMap(data, render);
+    }
+
+    async function searchPlayer() {
+      let query = $('#playersearch').val();
+      for(let i = 0; i < examples.length; i++){
+        p = examples[i]
+        id = `${p.name_first} ${p.name_last} ${p.year}`;
+        if(query == id){
+          console.log(p);
+          let label = (p.made_mlb == 1) ? 'made_mlb' : 'minor_leagues';
+          
+          $('#textinput').val(p.report)
+          await handleUserSubmit(p.report, label);
+
+          return;
+        }
+      }
+    }
+
+  </script>
+</head>
+
+
+<body onload="start();">
+  <div id="wrap">
+    <div id="datafile">
+      Current datafile name goes here.
+    </div>
+
+    <div class="buttons">
+      <button class="ui labeled icon button" id="last">
+        <i class="left arrow icon"></i>
+        Last example
+      </button>
+      <button class="ui right labeled icon button" id="next">
+        <i class="right arrow icon"></i>
+        Next example
+      </button>
+      <select class="ui selection dropdown" multiple="" id="filter-label-select">
+        <option value="">Labels</option>
+      </select>
+      <select class="ui selection dropdown" multiple="" id="filter-pred-select">
+        <option value="">Predictions</option>
+      </select>
+      <button class="ui button" id="filter">
+        Filter
+      </button>
+      <button class="ui button right floated" id="reload">
+        <i class="redo icon"></i>
+        Reload
+      </button>
+    </div>
+
+    <div class="ui warning message hidden" id="no-data-msg">
+      <i class="close icon"></i>
+      No data was found based on the filtering criteria.
+    </div>
+
+    <h4 class="ui horizontal divider header">
+      Current example
+    </h4>
+    <h3>ID</h3>
+    <div id="textid">
+      ID goes here
+    </div>
+    <h3>Text</h3>
+    <div id="text">
+      Text goes here
+    </div>
+    <h3>Label</h3>
+    <div id="label">
+      Label goes here
+    </div>
+    <h3>Prediction</h3>
+    <div id="pred">
+      Prediction goes here
+    </div>
+    <h4 class="ui horizontal divider header">
+      Try your own
+    </h4>
+    <div class="ui form">
+      <div class="field">
+        <label>Search</label>
+        <input type="text" id="playersearch" placeholder="Search...">
+      </div>
+      <div class="ui submit button" onclick="searchPlayer()">Submit</div>
+    </div>
+    
+    <br/>
+
+    <div class="ui form">
+      <div class="field">
+        <label>Your report:</label>
+        <textarea id='textinput' placeholder='Enter your own text.'></textarea>
+      </div>
+      <div class="ui submit button" onclick="handleUserSubmit()">Submit</div>
+    </div>
+  </div>
+</body>
+
+</html>
