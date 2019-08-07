@@ -1,6 +1,6 @@
 **/__pycache__/*
 **/.ipynb_checkpoints/*
-**/data/*
+webapp/**/data/*
 **/source/*
 **/fasttext/*
 **/.DS_Store
