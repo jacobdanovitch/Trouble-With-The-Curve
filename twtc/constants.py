@@ -1,6 +1,6 @@
 from typing import *
 
-from .config import Config
+from config import Config
 
 import torch
 from torch import nn
@@ -13,9 +13,14 @@ from allennlp.data.token_indexers.elmo_indexer import ELMoCharacterMapper, ELMoT
 from allennlp.data.token_indexers.openai_transformer_byte_pair_indexer import OpenaiTransformerBytePairIndexer
 
 USE_GPU = torch.cuda.is_available()
+USE_NT = True
+
 MODEL = 'base'
+ENCODER = 'cnn'
 
 config = Config(
+    USE_NT,
+    tags = [ENCODER, MODEL],
     testing=False,
     seed=1,
     batch_size=64,
@@ -24,6 +29,7 @@ config = Config(
     hidden_sz=256 if MODEL == 'elmo' else 512,
     max_seq_len=512 if MODEL == 'elmo' else None,
     max_vocab_size=100000,
+    embedding_dim=300
 )
 
 DATA_ROOT = 'https://github.com/jacobdanovitch/Trouble-With-The-Curve/blob/master/data/scouting_classification/{}?raw=true'
@@ -32,7 +38,7 @@ LABEL_COLS = ['label']
 
 TOKEN_INDEXERS = {
     'base': SingleIdTokenIndexer,
-    'base-char': TokenCharactersIndexer,
+    'base-char': lambda: TokenCharactersIndexer(min_padding_length=5),
     'elmo': ELMoTokenCharactersIndexer,
     'gpt2': OpenaiTransformerBytePairIndexer
 }
@@ -45,9 +51,9 @@ ELMO_URLS = dict(
 GPT2_URL = 'https://gist.githubusercontent.com/joelgrus/885ef14323ff3d6ecefb84fa59c48039/raw/ec3ef38729e45c6ab2c56dbb30cfc734ae60a1aa/ner-openai.jsonnet'
 
 
-ENCODERS: Dict[Seq2VecEncoder] = {
-    'lstm': lambda kwargs: PytorchSeq2VecWrapper(nn.LSTM(**kwargs, bidirectional=True, batch_first=True)),
-    'cnn': lambda kwargs: CnnEncoder,
+ENCODERS = {
+    'lstm': lambda *args: PytorchSeq2VecWrapper(nn.LSTM(*args, bidirectional=True, batch_first=True)),
+    'cnn': CnnEncoder,
     'highway-cnn': CnnHighwayEncoder,
     'boe': BagOfEmbeddingsEncoder
 }

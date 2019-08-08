@@ -1,7 +1,7 @@
-from .constants import config, MODEL, USE_GPU, DATA_ROOT, ENCODERS
-from .dataset import build_vocab, build_reader
-from .model import BaselineModel, build_embeddings, build_encoder
-from .test import calculate_metrics
+from constants import config, MODEL, ENCODER, USE_NT, USE_GPU, DATA_ROOT, ENCODERS
+from dataset import build_vocab, build_reader
+from model import BaselineModel, build_embeddings, build_encoder
+from test import calculate_metrics
 
 import torch
 from torch import nn
@@ -12,7 +12,14 @@ from allennlp.training.trainer import Trainer
 
 import matplotlib.pyplot as plt
 
+import neptune as nt
+
+parallel = False
+
 if __name__ == "__main__":
+    config.parameter('model', MODEL)
+    config.parameter('encoder', ENCODER)
+
     torch.manual_seed(config.seed)
 
     reader = build_reader(MODEL)
@@ -23,13 +30,16 @@ if __name__ == "__main__":
     iterator.index_with(vocab)
 
     word_embeddings = build_embeddings(MODEL, config)
-    encoder =  build_encoder(MODEL, config, word_embeddings)
+    encoder =  build_encoder(word_embeddings, config, ENCODER)
 
-    model = nn.DataParallel(BaselineModel(
+    model = BaselineModel(
         word_embeddings, 
         encoder, 
         vocab
-    ))
+    )
+    
+    if parallel:
+        model = nn.DataParallel(model)
 
     if USE_GPU:
         model.cuda()
@@ -49,7 +59,20 @@ if __name__ == "__main__":
     print()
     print(metrics)
 
-    ax = calculate_metrics(model, test_ds, vocab, batch_size=32 if MODEL == 'elmo' else 128)
+    for k, v in metrics.items():
+        try:
+            config.log(k, float(v))
+        except:
+            pass
+
+    img, acc, f1 = calculate_metrics(model, test_ds, vocab, batch_size=32 if MODEL == 'elmo' else 128)
+    if USE_NT:
+        config.log('acc', acc)
+        config.log('f1', f1)
+
+        config.exp.send_image('confusion-matrix', img)
+        nt.stop()
+
     plt.show()
 
 
