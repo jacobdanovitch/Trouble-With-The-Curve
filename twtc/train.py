@@ -4,6 +4,7 @@ from .model import BaselineModel, build_embeddings, build_encoder
 from .test import calculate_metrics
 
 import torch
+from torch import nn
 import torch.optim as optim
 
 from allennlp.data.iterators import BucketIterator
@@ -24,11 +25,11 @@ if __name__ == "__main__":
     word_embeddings = build_embeddings(MODEL, config)
     encoder =  build_encoder(MODEL, config, word_embeddings)
 
-    model = BaselineModel(
+    model = nn.DataParallel(BaselineModel(
         word_embeddings, 
         encoder, 
         vocab
-    )
+    ))
 
     if USE_GPU:
         model.cuda()
