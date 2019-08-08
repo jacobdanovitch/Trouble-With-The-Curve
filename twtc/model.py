@@ -1,6 +1,6 @@
 from typing import *
 
-from .constants import LABEL_COLS, ELMO_URLS, GPT2_URL, ENCODERS
+from constants import LABEL_COLS, ELMO_URLS, GPT2_URL, ENCODERS
 
 import torch
 from torch import nn

@@ -1,8 +1,10 @@
 from typing import *
 
-from .constants import DATA_ROOT, USE_GPU
+from constants import DATA_ROOT, USE_GPU
 
+from PIL import Image
 import matplotlib.pyplot as plt
+
 from sklearn.metrics import f1_score, confusion_matrix
 import seaborn as sns
 
@@ -59,18 +61,37 @@ def calculate_metrics(model, test_ds, vocab, batch_size=128):
     preds = (test_preds > .5).astype('int') 
     truth = test_df.label.values
 
+    acc = (preds == truth).mean()
+    f1 = f1_score(preds, truth, average="binary")
+
     cm = confusion_matrix(truth, preds) / len(truth)
 
-    print(f'Accuracy: {(preds == truth).mean()}')
-    print(f'F-1: {f1_score(preds, truth, average="binary")}')
+    print(f'Accuracy: {acc}')
+    print(f'F-1: {f1}')
 
     sns.set(font_scale=1.25)
     labels = ['minors', 'mlb']
 
+    fig = plt.figure()
     sns.heatmap(cm, annot=True, annot_kws={"size": 16}, xticklabels=labels, yticklabels=labels)
+
+    img = fig2pil(fig)
 
     plt.title('Confusion matrix')
     plt.xlabel('Predicted')
     plt.ylabel('Ground truth')
 
-    return plt
+    
+
+    return img, acc, f1
+
+def fig2pil(fig):
+    fig.canvas.draw()
+
+    w, h = fig.canvas.get_width_height()
+    buf = np.fromstring(fig.canvas.tostring_argb(), dtype=np.uint8)
+    buf.shape = (w, h, 4)
+    buf = np.roll(buf, 3, axis=2)
+
+    w, h, d = buf.shape
+    return Image.frombytes("RGBA", (w, h), buf.tostring())

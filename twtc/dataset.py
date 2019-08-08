@@ -1,7 +1,7 @@
 from typing import *
 
-from .constants import TOKEN_INDEXERS, DATA_ROOT, LABEL_COLS
-from .config import Config
+from constants import TOKEN_INDEXERS, DATA_ROOT, LABEL_COLS
+from config import Config
 
 from overrides import overrides
 
@@ -58,7 +58,7 @@ class MLBDatasetReader(DatasetReader):
         df['report'] = clean_text(df['report'], rm_null=False)
         
         data = df.apply(lambda row: self.text_to_instance(
-                [Token(x) for x in self.tokenizer(row["report"])],
+                [Token(x) for x in self.tokenizer(row["report"], self.max_seq_len)],
                 row["index"], 
             row[LABEL_COLS].values,
             ), axis=1)
