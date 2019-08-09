@@ -17,7 +17,7 @@ Bag-of-Embeddings|0.5986|**0.5696**
 
 A consistent (though marginal) improvement was seen when integrating metadata such as how high the player was drafted, their MLB-readiness, their ranking, and a variety of numeric grades for traits such as hitting, running, throwing, and so on.
 
-_<tables to be added shortly>_
+_tables to be added shortly_
 
 ## Upcoming additions
 
