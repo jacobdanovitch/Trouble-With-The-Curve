@@ -1,6 +1,6 @@
 # Trouble with the Curve
 
-This folder contains the code required for training the models described in the paper. All deep learning models were assembled using `AllenNLP`, and can be run with `python train.py`. Training logs can be viewed [here](https://ui.neptune.ml/jacobdanovitch/Trouble-with-the-Curve/experiments).
+This folder contains the code required for training the models described in the paper. All deep learning models were assembled using `AllenNLP` (using [this tutorial](https://mlexplained.com/2019/01/30/an-in-depth-tutorial-to-allennlp-from-basics-to-elmo-and-bert/) as reference), and can be run with `python train.py`. Training logs can be viewed [here](https://ui.neptune.ml/jacobdanovitch/Trouble-with-the-Curve/experiments).
 
 ## Report classification
 
