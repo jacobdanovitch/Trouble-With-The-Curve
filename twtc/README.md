@@ -4,7 +4,7 @@ This folder contains the code required for training the models described in the 
 
 We performed experiments with three different feature sets to predict if a player would make the MLB: metadata, a written scouting report, and a union of the two.
 
-## Metadata Classification
+## Metadata classification
 
 Here, we used metadata for each prospect to classify if they would make the MLB. This metadata consisted of features like:
 
@@ -84,6 +84,6 @@ These findings provide a light endorsement of the role of professional scouts in
 
 ## Future Work
 
-While the performance of numeric features were studied with [metadata](#Metadata), further research should be done to integrate additional statistical features. In our full dataset, we provide player IDs to join each record to the corresponding player on popular resources such as MLB.com, FanGraphs, and Baseball-Reference. Future works should explore the integration of player statistics from these resources using the IDs, and examine their predictive power as well. Likewise, in lieu of predicting if a player will simply make the MLB, more finely-grained objectives could be considered (such as predicting future Wins Above Replace (WAR), by regression or binning and classification).
+While the performance of numeric features were studied with [metadata](#Metadata-classification), further research should be done to integrate additional statistical features. In our full dataset, we provide player IDs to join each record to the corresponding player on popular resources such as MLB.com, FanGraphs, and Baseball-Reference. Future works should explore the integration of player statistics from these resources using the IDs, and examine their predictive power as well. Likewise, in lieu of predicting if a player will simply make the MLB, more finely-grained objectives could be considered (such as predicting future Wins Above Replace (WAR), by regression or binning and classification).
 
 
