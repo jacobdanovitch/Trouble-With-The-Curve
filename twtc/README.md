@@ -12,9 +12,9 @@ Here, we used metadata for each prospect to classify if they would make the MLB.
 * Ranking on their prospect list, the spot at which they were drafted, how major-league ready they were (how many years scouts estimated it would take for them to reach the majors)
 * Numeric grades for a variety of skills
   * Position players
-   * Contact, Power, Speed, Fielding, Throwing
+    * Contact, Power, Speed, Fielding, Throwing
   * Pitchers
-   * Control, Fastball, Changeup, Curveball, Slider, Cutter, Splitter
+    * Control, Fastball, Changeup, Curveball, Slider, Cutter, Splitter
   * Overall
 
 Several models were evaluated using `scikit-learn`. The results are as follows:
