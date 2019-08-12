@@ -8,23 +8,13 @@ We performed experiments with three different feature sets to predict if a playe
 
 Here, we used metadata for each prospect to classify if they would make the MLB. This metadata consisted of features like:
 
-* Ranking on their prospect list
-* The spot at which they were drafted
-* How major-league ready they were (how many years scouts estimated it would take for them to reach the majors)
+* General metadata
+* Ranking on their prospect list, the spot at which they were drafted, how major-league ready they were (how many years scouts estimated it would take for them to reach the majors)
 * Numeric grades for a variety of skills
-  * Contact
-  * Power
-  * Speed
-  * Fielding
-  * Throwing
-  * Pitching
-    * Control
-    * Fastball
-    * Changeup
-    * Curveball
-    * Slider
-    * Cutter
-    * Splitter
+  * Position players
+   * Contact, Power, Speed, Fielding, Throwing
+  * Pitchers
+   * Control, Fastball, Changeup, Curveball, Slider, Cutter, Splitter
   * Overall
 
 Several models were evaluated using `scikit-learn`. The results are as follows:
