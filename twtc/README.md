@@ -40,6 +40,12 @@ _Mean_|_0.6610_|_0.5573_
 
 Stochastic gradient descent performs best when classifying the tabular data, though the results are overall fairly poor. This suggests that typical measures such as rankings, draft position, and scouting grades are insufficient to reliably predict if a prospect will make the major leagues.
 
+To train: 
+
+```bash
+python sklearn_models.py --clf=[lr, nn, svm, sgd] --features=metadata
+```
+
 ## Report classification
 
 We then compared the above results to performance when using only the contents of the written scouting report. We added several deep-learning based models for natural language processing, using `AllenNLP`. For the `scikit-learn` models, we featurized each report using `Tf-Idf` with a maximum vocabulary size of 10,000.
@@ -61,6 +67,17 @@ _Mean_|_0.8363_|_0.7942_
 
 The Convolutional Neural Network (CNN) performs best at predicting if a player will make the major leagues, based on only their scouting report. While traditionally an LSTM would likely be most performant on text classification, we hypothesize that the length of the reports (generally a paragraph at a minimum) make it challenging for the LSTM to learn as effectively. In contrast, CNNs could benefit from the style in which the reports are written (generally segmented into sections, the order of which is not necessarily important). 
 
+To train: 
+
+```bash
+python sklearn_models.py --clf=[lr, nn, svm, sgd] --features=tfidf
+```
+
+
+```bash
+python train.py --encoder=[boe, lstm, cnn, highway-cnn] --features=text
+```
+
 ## Profile classification
 
 A consistent, though very slight, improvement was seen when combining both sets of features.
@@ -81,6 +98,17 @@ _Mean_|_0.8389_|_0.7999_
 As is to be expected, the majority of models see improved performance when using the full set of profile data. That said, the improvement was marginal at best, suggesting that the written reports are far more predictive than the aforementioned metadata. 
 
 These findings provide a light endorsement of the role of professional scouts in Major League Baseball, suggesting that their written observations hold predictive power in the future development of young players.
+
+To train: 
+
+```bash
+python sklearn_models.py --clf=[lr, nn, svm, sgd] --features=union
+```
+
+
+```bash
+python train.py --encoder=[boe, lstm, cnn, highway-cnn] --features=union
+```
 
 ## Future Work
 
