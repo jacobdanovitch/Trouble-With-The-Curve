@@ -17,19 +17,20 @@ from allennlp.data.token_indexers import TokenIndexer
 from allennlp.data.tokenizers import Token
 
 
-
 def clean_text(corp, rm_null=True):
     if rm_null:
         corp = corp[~corp.isnull()]
     corp = corp.str.lower().str.encode('ascii', 'ignore').str.decode('ascii')
     corp = corp.str.replace("bernie pleskoff's scouting report", "")
-    corp = corp.apply(lambda doc: ''.join([char if char.isalnum() else f' {char} ' if doc else None for char in doc]))
+    corp = corp.apply(lambda doc: ''.join(
+        [char if char.isalnum() else f' {char} ' if doc else None for char in doc]))
     return corp
 
+
 class MLBDatasetReader(DatasetReader):
-    def __init__(self, tokenizer: Callable[[str], List[str]]=lambda x: x.split(),
+    def __init__(self, tokenizer: Callable[[str], List[str]] = lambda x: x.split(),
                  token_indexers: Dict[str, TokenIndexer] = None,
-                 max_seq_len: Optional[int]=None) -> None:
+                 max_seq_len: Optional[int] = None) -> None:
         super().__init__(lazy=False)
         self.tokenizer = tokenizer
         self.token_indexers = token_indexers
@@ -40,15 +41,15 @@ class MLBDatasetReader(DatasetReader):
                          labels: np.ndarray) -> Instance:
         sentence_field = TextField(tokens, self.token_indexers)
         fields = {"tokens": sentence_field}
-        
+
         id_field = MetadataField(id)
         fields["id"] = id_field
-        
+
         label_field = ArrayField(array=labels)
         fields["label"] = label_field
 
         return Instance(fields)
-    
+
     @overrides
     def _read(self, file_path: str) -> Iterator[Instance]:
         # df = pd.read_csv(file_path)
@@ -56,17 +57,20 @@ class MLBDatasetReader(DatasetReader):
         df = df.reset_index().rename(columns={'Index': 'id'})
         df = df[df.report.str.split(' ').str.len() > 3]
         df['report'] = clean_text(df['report'], rm_null=False)
-        
+
         data = df.apply(lambda row: self.text_to_instance(
-                [Token(x) for x in self.tokenizer(row["report"], self.max_seq_len)],
-                row["index"], 
+            [Token(x) for x in self.tokenizer(
+                row["report"], self.max_seq_len)],
+            row["index"],
             row[LABEL_COLS].values,
-            ), axis=1)
+        ), axis=1)
         return iter(data)
 
-def tokenizer(x: str, max_seq_len:int):
-    return [w.text for w in SpacyWordSplitter(language='en_core_web_sm', 
-                                pos_tags=False).split_words(x)[:max_seq_len]]
+
+def tokenizer(x: str, max_seq_len: int):
+    return [w.text for w in SpacyWordSplitter(language='en_core_web_sm',
+                                              pos_tags=False).split_words(x)[:max_seq_len]]
+
 
 def build_reader(indexer):
     reader = MLBDatasetReader(
@@ -84,3 +88,46 @@ def build_vocab(reader=None, max_vocab_size=None, model='base'):
         full_ds = reader.read(DATA_ROOT.format("full_dataset.json"))
         return Vocabulary.from_instances(full_ds, max_vocab_size=max_vocab_size)
     return Vocabulary()
+
+
+def fit_pipeline(train, featurizer='union', clf='lr'):
+    train = train[~train.isnull()]
+
+    train_df = train.drop(columns=['name', 'label'])
+    y_train = train.label
+
+    tfidf_pipe = Pipeline([
+        ('report_tfidf', Pipeline([
+            ('selector', ItemSelector(key='report')),
+            ('tfidf', TfidfVectorizer(max_features=10000, strip_accents='unicode')),
+        ]))
+    ])
+
+    meta = ItemSelector(key=train_df.drop(columns='report').columns)
+
+    features = None
+    if featurizer == 'union':
+        features = FeatureUnion([
+            ('metadata', meta),
+            ('tfidf', tfidf_pipe)
+        ])
+    elif featurizer == 'tfidf':
+        features = tfidf_pipe
+    elif featurizer == 'metadata':
+        features = meta
+    else:
+        raise ValueError(f'Invalid featurizer: {featurizer}')
+
+    clf_model = CLFS[clf]
+    print(
+        f'Training {type(clf_model).__name__} with {featurizer} features on {train_df.shape} training set.')
+
+    pipe = Pipeline([
+        ('featurizer', features),
+        ('impute', SimpleImputer(missing_values=np.nan,
+                                 strategy='constant', fill_value=-1)),
+        ('scale', StandardScaler(with_mean=False)),
+        ('clf', clf_model)
+    ]).fit(train_df, y_train)
+
+    return pipe
