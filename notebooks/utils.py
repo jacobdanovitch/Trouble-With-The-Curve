@@ -66,6 +66,7 @@ def mask_text(txt):
 
 
 # https://datascience.blog.wzb.eu/2017/06/19/speeding-up-nltk-with-parallel-processing/
+# https://stackoverflow.com/questions/41920124/multiprocessing-use-tqdm-to-display-a-progress-bar
 def apply_text_mask(reports, processes=2):
     masked = []
     with mp.Pool(processes=processes) as pool:
