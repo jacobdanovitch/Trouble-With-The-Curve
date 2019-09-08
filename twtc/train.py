@@ -1,7 +1,10 @@
-from constants import config, MODEL, ENCODER, USE_NT, USE_GPU, DATA_ROOT, ENCODERS
+from constants import USE_GPU, DATA_ROOT, ENCODERS, config_defaults
+from config import Config
 from dataset import build_vocab, build_reader
-from model import BaselineModel, build_embeddings, build_encoder
+from model import BaselineModel, build_embeddings, build_encoder, build_model
 from test import calculate_metrics
+
+import argparse 
 
 import torch
 from torch import nn
@@ -14,46 +17,41 @@ import matplotlib.pyplot as plt
 
 import neptune as nt
 
-parallel = False
+def build_argparser():
+    parser = argparse.ArgumentParser()
+    
+    parser.add_argument('-m', '--model', default='base', type=str)
+    parser.add_argument('-i', '--indexer', default='base', type=str)
+    parser.add_argument('-f','--features', default='union', type=str)
+
+    parser.add_argument('-e', '--encoder', type=str)
+    parser.add_argument('-d', '--embedding_dim', type=int, default=512)
+
+    parser.add_argument('-lr', '--learning_rate', default=1e-4, type=float)
+    parser.add_argument('-bsz', '--batch_size', default=8, type=int)
+    parser.add_argument('-ep', '--epochs', default=15, type=int)
+
+    parser.add_argument('-t', '--track', action='store_true')#, default=False, type=bool)
+    
+    return parser.parse_args()
 
 if __name__ == "__main__":
-    config.parameter('model', MODEL)
-    config.parameter('encoder', ENCODER)
+    args = build_argparser()
+    
+    cfg_dict = {**config_defaults, **vars(args)}
+    config = Config(tags=['allennlp', args.features, args.encoder], **cfg_dict)
+
+    config.parameter('encoder', config.encoder)
+    config.parameter('features', config.features)
 
     torch.manual_seed(config.seed)
 
-    reader = build_reader(MODEL)
-    train_ds, test_ds = (reader.read(DATA_ROOT.format(fname)) for fname in ["train.json", "test.json"])
+    reader = build_reader(config)
     
-    vocab = build_vocab(reader, config.max_vocab_size, MODEL)
-    iterator = BucketIterator(batch_size=config.batch_size, sorting_keys=[("tokens", "num_tokens")])
-    iterator.index_with(vocab)
-
-    word_embeddings = build_embeddings(MODEL, config)
-    encoder =  build_encoder(word_embeddings, config, ENCODER)
-
-    model = BaselineModel(
-        word_embeddings, 
-        encoder, 
-        vocab
-    )
+    url = DATA_ROOT[config.features]
+    train_ds, test_ds = (reader.read(url.format(fname)) for fname in ["train.json", "test.json"])
     
-    if parallel:
-        model = nn.DataParallel(model)
-
-    if USE_GPU:
-        model.cuda()
-
-    optimizer = optim.Adam(model.parameters(), lr=config.lr)
-    
-    trainer = Trainer(
-        model=model,
-        optimizer=optimizer,
-        iterator=iterator,
-        train_dataset=train_ds,
-        cuda_device=0 if USE_GPU else -1,
-        num_epochs=config.epochs,
-    )
+    model, trainer, vocab = build_model(config, reader, train_ds)
 
     metrics = trainer.train()
     print()
@@ -65,8 +63,8 @@ if __name__ == "__main__":
         except:
             pass
 
-    img, acc, f1 = calculate_metrics(model, test_ds, vocab, batch_size=32 if MODEL == 'elmo' else 128)
-    if USE_NT:
+    img, acc, f1 = calculate_metrics(model, config.features, test_ds, vocab, batch_size=32 if config.encoder == 'bert' else 128)
+    if config.track:
         config.log('acc', acc)
         config.log('f1', f1)
 

@@ -5,7 +5,7 @@ from constants import DATA_ROOT, USE_GPU
 from PIL import Image
 import matplotlib.pyplot as plt
 
-from sklearn.metrics import f1_score, confusion_matrix
+from sklearn.metrics import classification_report, f1_score, balanced_accuracy_score, confusion_matrix
 import seaborn as sns
 
 from allennlp.models import Model
@@ -48,7 +48,7 @@ class Predictor:
         return np.concatenate(preds, axis=0)
 
 
-def calculate_metrics(model, test_ds, vocab, batch_size=128):
+def calculate_metrics(model, features, test_ds, vocab, batch_size=128):
     # iterate over the dataset without changing its order
     seq_iterator = BasicIterator(batch_size=batch_size)
     seq_iterator.index_with(vocab)
@@ -56,21 +56,26 @@ def calculate_metrics(model, test_ds, vocab, batch_size=128):
     predictor = Predictor(model, seq_iterator, cuda_device=0 if USE_GPU else -1)
     test_preds = predictor.predict(test_ds) 
 
-    test_df = pd.read_json(DATA_ROOT.format('test.json'))
+    test_df = pd.read_json(DATA_ROOT[features].format('test.json'))
 
     preds = (test_preds > .5).astype('int') 
     truth = test_df.label.values
 
-    acc = (preds == truth).mean()
-    f1 = f1_score(preds, truth, average="binary")
+    acc = balanced_accuracy_score(truth, preds)
+    f1 = f1_score(truth, preds, average="binary")
 
     cm = confusion_matrix(truth, preds) / len(truth)
+    labels = ['minors', 'mlb']
 
-    print(f'Accuracy: {acc}')
-    print(f'F-1: {f1}')
+    print('Distribution\n---')
+    print(pd.Series(preds.tolist()).value_counts())
+    print('---')
+
+    print(f'Balanced accuracy: {acc:.4f}')
+    print(f'Binary F-1: {f1:.4f}')
+    print(classification_report(truth, preds, target_names=labels))
 
     sns.set(font_scale=1.25)
-    labels = ['minors', 'mlb']
 
     fig = plt.figure()
     sns.heatmap(cm, annot=True, annot_kws={"size": 16}, xticklabels=labels, yticklabels=labels)

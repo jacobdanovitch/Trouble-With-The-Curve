@@ -1,6 +1,6 @@
 from typing import *
 
-from constants import TOKEN_INDEXERS, DATA_ROOT, LABEL_COLS
+from constants import TOKEN_INDEXERS, DATA_ROOT, LABEL_COLS, FEATURE_COLS
 from config import Config
 
 from overrides import overrides
@@ -17,34 +17,34 @@ from allennlp.data.token_indexers import TokenIndexer
 from allennlp.data.tokenizers import Token
 
 
-def clean_text(corp, rm_null=True):
-    if rm_null:
-        corp = corp[~corp.isnull()]
-    corp = corp.str.lower().str.encode('ascii', 'ignore').str.decode('ascii')
-    corp = corp.str.replace("bernie pleskoff's scouting report", "")
-    corp = corp.apply(lambda doc: ''.join(
-        [char if char.isalnum() else f' {char} ' if doc else None for char in doc]))
-    return corp
+from data_utils import clean_text
 
-
-class MLBDatasetReader(DatasetReader):
-    def __init__(self, tokenizer: Callable[[str], List[str]] = lambda x: x.split(),
+class MLBReportReader(DatasetReader):
+    def __init__(self, tokenizer: Callable[[str], List[str]]=lambda x: x.split(),
                  token_indexers: Dict[str, TokenIndexer] = None,
                  max_seq_len: Optional[int] = None) -> None:
         super().__init__(lazy=False)
         self.tokenizer = tokenizer
         self.token_indexers = token_indexers
         self.max_seq_len = max_seq_len
+        
+        #self.cache_data(cache_directory='.data_cache')
 
     @overrides
-    def text_to_instance(self, tokens: List[Token], id: str,
-                         labels: np.ndarray) -> Instance:
+    def text_to_instance(self, 
+            tokens: List[Token], 
+            #id: str,
+            labels: np.ndarray
+        ) -> Instance:
         sentence_field = TextField(tokens, self.token_indexers)
-        fields = {"tokens": sentence_field}
+        #token_type_field = ArrayField(array=np.array([0]*len(tokens)))
 
-        id_field = MetadataField(id)
-        fields["id"] = id_field
+        fields = {"tokens": sentence_field} # 'tokens-type-ids': token_type_field}}
+        
 
+        #id_field = MetadataField(id)
+        #fields["id"] = id_field
+        
         label_field = ArrayField(array=labels)
         fields["label"] = label_field
 
@@ -52,18 +52,69 @@ class MLBDatasetReader(DatasetReader):
 
     @overrides
     def _read(self, file_path: str) -> Iterator[Instance]:
-        # df = pd.read_csv(file_path)
         df = pd.read_json(file_path)
         df = df.reset_index().rename(columns={'Index': 'id'})
         df = df[df.report.str.split(' ').str.len() > 3]
         df['report'] = clean_text(df['report'], rm_null=False)
 
         data = df.apply(lambda row: self.text_to_instance(
-            [Token(x) for x in self.tokenizer(
-                row["report"], self.max_seq_len)],
-            row["index"],
+            [Token(x) for x in self.tokenizer(row["report"], self.max_seq_len)],
+            #row["index"],
             row[LABEL_COLS].values,
-        ), axis=1)
+            ), 
+            axis=1)
+        return iter(data)
+
+class MLBProfileReader(DatasetReader):
+    def __init__(self, tokenizer: Callable[[str], List[str]]=lambda x: x.split(),
+                 token_indexers: Dict[str, TokenIndexer] = None,
+                 max_seq_len: Optional[int]=None) -> None:
+        super().__init__(lazy=False)
+        self.tokenizer = tokenizer
+        self.token_indexers = token_indexers
+        self.max_seq_len = max_seq_len
+
+        #self.cache_data(cache_directory='.data_cache')
+
+    @overrides
+    def text_to_instance(self, 
+            tokens: List[Token], 
+            features: np.ndarray,
+            #id: str,
+            labels: np.ndarray
+        ) -> Instance:
+        sentence_field = TextField(tokens, self.token_indexers)
+        #sentence_field.index(Vocabulary())
+        #print(vars(sentence_field))
+        fields = {"tokens": sentence_field} # ._indexed_tokens
+
+        feature_field = ArrayField(array=features)
+        fields['features'] = feature_field
+        
+        #id_field = MetadataField(id)
+        #fields["id"] = id_field
+        
+        label_field = ArrayField(array=labels)
+        fields["label"] = label_field
+
+        return Instance(fields)
+    
+    @overrides
+    def _read(self, file_path: str) -> Iterator[Instance]:
+        df = pd.read_json(file_path)
+        df = df.reset_index().rename(columns={'Index': 'id'})
+        df = df[df.report.str.split(' ').str.len() > 3]
+        # df['report'] = clean_text(df['report'], rm_null=False)
+        df.loc[:, FEATURE_COLS] = (df.loc[:, FEATURE_COLS] - df.loc[:, FEATURE_COLS].mean()) / df.loc[:, FEATURE_COLS].std()
+        df = df.fillna(0)
+
+        data = df.apply(lambda row: self.text_to_instance(
+            [Token(x) for x in self.tokenizer(row["report"], self.max_seq_len)],
+            row[FEATURE_COLS].values,
+            #row["index"],
+            row[LABEL_COLS].values,
+            ), 
+            axis=1)
         return iter(data)
 
 
@@ -72,17 +123,18 @@ def tokenizer(x: str, max_seq_len: int):
                                               pos_tags=False).split_words(x)[:max_seq_len]]
 
 
-def build_reader(indexer):
-    reader = MLBDatasetReader(
+def build_reader(config):
+    DataReaderClass = MLBProfileReader if config.features == 'union' else MLBReportReader
+    reader = DataReaderClass(
         tokenizer=tokenizer,
-        token_indexers={"tokens": TOKEN_INDEXERS[indexer]()}
+        token_indexers={"tokens": TOKEN_INDEXERS[config.indexer]()}
     )
+
     return reader
 
 
-def build_vocab(reader=None, max_vocab_size=None, model='base'):
-    if model == 'base':
-        assert max_vocab_size
+def build_vocab(config, reader=None):
+    if config.indexer == 'base':
         assert reader
 
         full_ds = reader.read(DATA_ROOT.format("full_dataset.json"))

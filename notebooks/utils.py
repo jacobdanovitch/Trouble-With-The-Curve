@@ -65,6 +65,7 @@ def mask_text(txt):
     return replace(txt, subs)
 
 
+# https://datascience.blog.wzb.eu/2017/06/19/speeding-up-nltk-with-parallel-processing/
 def apply_text_mask(reports, processes=2):
     masked = []
     with mp.Pool(processes=processes) as pool:
