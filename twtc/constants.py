@@ -7,9 +7,9 @@ import torch
 from torch import nn
 
 from allennlp.modules.seq2vec_encoders import Seq2VecEncoder, PytorchSeq2VecWrapper
-from allennlp.modules.seq2vec_encoders import BagOfEmbeddingsEncoder, CnnEncoder, CnnHighwayEncoder, BertPooler
+from allennlp.modules.seq2vec_encoders import BagOfEmbeddingsEncoder, CnnEncoder, CnnHighwayEncoder#, BertPooler
 
-from allennlp.data.token_indexers import SingleIdTokenIndexer, TokenCharactersIndexer, PretrainedBertIndexer, OpenaiTransformerBytePairIndexer, ELMoTokenCharactersIndexer
+from allennlp.data.token_indexers import SingleIdTokenIndexer, TokenCharactersIndexer#, PretrainedBertIndexer, OpenaiTransformerBytePairIndexer, ELMoTokenCharactersIndexer
 from allennlp.data.token_indexers.elmo_indexer import ELMoCharacterMapper
 
 from sklearn.svm import LinearSVC
@@ -41,18 +41,27 @@ DATA_ROOT = {
 
 
 LABEL_COLS = ['label']
-FEATURE_COLS = ['rank', 'drafted', 'eta', 'Arm', 'Changeup', 'Control', 'Curveball', 'Cutter', 'Fastball', 'Field', 'Hit', 'Overall', 'Power', 'Run', 'Slider', 'Splitter']
+#FEATURE_COLS = ['rank', 'drafted', 'eta', 'Arm', 'Changeup', 'Control', 'Curveball', 'Cutter', 'Fastball', 'Field', 'Hit', 'Overall', 'Power', 'Run', 'Slider', 'Splitter']
+FEATURE_COLS = ['age', 'Arm', 'Changeup', 'Control', 'Curveball',
+       'Cutter', 'Fastball', 'Field', 'Hit', 'Power', 'Run', 'Slider',
+       'Splitter', 'OBP', 'CS', 'WHIP', 'HR', 'ERA', 'SO',
+       'H', 'SO_pit', 'L', 'R', 'RBI', '3B', 'BS', 'GP', 'TBF',
+       '2B', 'AVG', 'HR_pit', 'IP', 'SB', 'Hld', 'Pitches', 'BB_pit', 'OPS',
+       'AB', 'SV', 'BB', 'W', 'SLG',
+       'pos_1B', 'pos_2B', 'pos_3B', 'pos_C', 'pos_CF', 'pos_INF', 'pos_LF',
+       'pos_LHP', 'pos_OF', 'pos_RF', 'pos_RHP', 'pos_SS', 'pos_A', 'pos_A+',
+       'pos_A-', 'pos_AA', 'pos_AAA', 'pos_R', 'pos_UNK'] # 
 
 TOKEN_INDEXERS = {
     'base': SingleIdTokenIndexer,
     'base-char': lambda: TokenCharactersIndexer(min_padding_length=5),
-    'elmo': ELMoTokenCharactersIndexer,
-    'gpt2': OpenaiTransformerBytePairIndexer,
-    'bert': lambda: PretrainedBertIndexer(
-        pretrained_model="bert-base-uncased",
-        do_lowercase=True,
-        truncate_long_sequences=False
-    )
+    #'elmo': ELMoTokenCharactersIndexer,
+    #'gpt2': OpenaiTransformerBytePairIndexer,
+    #'bert': lambda: PretrainedBertIndexer(
+    #    pretrained_model="bert-base-uncased",
+    #    do_lowercase=True,
+    #    truncate_long_sequences=False
+    #)
 }
 
 ELMO_URLS = dict(

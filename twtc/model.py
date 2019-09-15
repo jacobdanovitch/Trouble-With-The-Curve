@@ -7,6 +7,8 @@ import torch
 from torch import nn
 from torch import optim
 
+import numpy as np
+
 from allennlp.models import Model, BasicClassifier, BertForClassification
 from allennlp.modules.seq2vec_encoders import Seq2VecEncoder, PytorchSeq2VecWrapper
 from allennlp.nn.util import get_text_field_mask
@@ -27,11 +29,12 @@ class BaselineModel(Model):
                 word_embeddings: TextFieldEmbedder,
                  encoder: Seq2VecEncoder,
                  vocab: Vocabulary,
+                 feature_cols=FEATURE_COLS,
                  out_sz: int=len(LABEL_COLS),
                  ):
         super().__init__(vocab)
         
-        hidden_sz = encoder.get_output_dim() + (len(FEATURE_COLS) if features == 'union' else 0)
+        hidden_sz = encoder.get_output_dim() + (len(feature_cols) if features == 'union' else 0)
         self.features = features
         
         self.word_embeddings = word_embeddings
@@ -41,13 +44,15 @@ class BaselineModel(Model):
         
     def forward(self, 
                 tokens: Dict[str, torch.Tensor],
-                #id: Any, 
                 label: torch.Tensor,
-                features: torch.Tensor = None,
+                features: np.ndarray = None,
         ) -> torch.Tensor:
         mask = get_text_field_mask(tokens)
         embeddings = self.word_embeddings(tokens)
-        feature_vector = self.encoder(embeddings, mask)
+        feature_vector = torch.tensor(self.encoder(embeddings, mask))
+        
+        #features = torch.tensor(features)
+        
         if self.features == 'union':
             feature_vector = torch.cat([feature_vector, features], dim=1)
         class_logits = self.projection(feature_vector)
@@ -103,8 +108,9 @@ def build_encoder(word_embeddings, config):
     return encoder
 
 
-def build_model(config, reader, train_ds):
-    vocab = build_vocab(config, reader)
+def build_model(config, reader, train_ds, vocab=None):
+    if not vocab:
+        vocab = build_vocab(config, reader)
     iterator = BucketIterator(batch_size=config.batch_size, sorting_keys=[("tokens", "num_tokens")])
     iterator.index_with(vocab)
 
@@ -119,7 +125,8 @@ def build_model(config, reader, train_ds):
                 config.features,
                 word_embeddings, 
                 encoder, 
-                vocab
+                vocab,
+                feature_cols=reader.feature_cols
             )
         elif config.features == 'text':
             model = BasicClassifier(

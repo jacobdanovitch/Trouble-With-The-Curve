@@ -48,18 +48,16 @@ class Predictor:
         return np.concatenate(preds, axis=0)
 
 
-def calculate_metrics(model, features, test_ds, vocab, batch_size=128):
+def calculate_metrics(model, test_ds, vocab, batch_size=128):
     # iterate over the dataset without changing its order
     seq_iterator = BasicIterator(batch_size=batch_size)
     seq_iterator.index_with(vocab)
     
     predictor = Predictor(model, seq_iterator, cuda_device=0 if USE_GPU else -1)
-    test_preds = predictor.predict(test_ds) 
+    test_preds = predictor.predict(test_ds)
 
-    test_df = pd.read_json(DATA_ROOT[features].format('test.json'))
-
-    preds = (test_preds > .5).astype('int') 
-    truth = test_df.label.values
+    preds = (test_preds > .5).astype('int').reshape(-1)
+    truth = np.array([i.fields['label'].array for i in test_ds]).reshape(-1).astype('int')
 
     acc = balanced_accuracy_score(truth, preds)
     f1 = f1_score(truth, preds, average="binary")

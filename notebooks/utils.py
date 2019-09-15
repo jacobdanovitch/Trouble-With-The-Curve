@@ -1,5 +1,7 @@
+import pandas as pd
+
 import multiprocessing as mp
-from tqdm.autonotebook import tqdm; tqdm.pandas()
+from tqdm.auto import tqdm; tqdm.pandas()
 
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import OneHotEncoder
@@ -9,7 +11,6 @@ import nltk
 
 #nltk.download('maxent_ne_chunker')
 #nltk.download('words')
-
 
 dropped_cols = [
     'expected',
@@ -33,11 +34,18 @@ dropped_cols = [
     'PlayerId_h'
 ]
 
+def estimate_eta(age):
+    if pd.isnull(age):
+        return age
+    return (0.5 * age) + 12.757
+    
+
+
 def onehot_encode_column(df, col):
     enc = OneHotEncoder()
     encodings = enc.fit_transform(df[col].values.reshape(-1, 1)).todense()
     
-    names = [f.replace('x0_', '') for f in enc.get_feature_names()]
+    names = [f.replace('x0', 'pos') for f in enc.get_feature_names()]
     encodings = pd.DataFrame(encodings, columns=names)
     
     assert len(df) == len(encodings)
@@ -57,27 +65,31 @@ def replace(string, substitutions):
     return regex.sub(lambda match: substitutions[match.group(0)], string)
 
 def mask_text(txt):
-    try:
-        chunked = nltk.ne_chunk(nltk.tag.pos_tag(nltk.word_tokenize(txt)))
-    except:
-        raise ValueError(txt)
-    subs = {" ".join(w for w, t in elt): elt.label() for elt in chunked if isinstance(elt, nltk.Tree)}
+    if not txt or pd.isnull(txt):
+        return txt
+    chunked = nltk.ne_chunk(nltk.tag.pos_tag(nltk.word_tokenize(txt)))
+    subs = {" ".join(w for w, t in elt): elt.label() 
+            for elt in chunked 
+            if isinstance(elt, nltk.Tree)}
     return replace(txt, subs)
 
 
 # https://datascience.blog.wzb.eu/2017/06/19/speeding-up-nltk-with-parallel-processing/
 # https://stackoverflow.com/questions/41920124/multiprocessing-use-tqdm-to-display-a-progress-bar
+def tqdm_parallel(fn, vals, processes):
+    with mp.Pool(processes=processes) as pool, tqdm(total=len(vals)) as pbar:
+        for x in pool.imap(fn, vals):
+            pbar.update()
+            yield x
+
 def apply_text_mask(reports, processes=2):
-    masked = []
-    with mp.Pool(processes=processes) as pool:
-            with tqdm(total=len(reports)) as pbar:
-                for i, x in enumerate(pool.imap_unordered(mask_text, reports)):
-                    pbar.update()
-                    masked.append(x)
-    return masked
+    return list(tqdm_parallel(mask_text, reports, processes))
 
 
-
+def str2float(s):
+    if s.replace('.','',1).isdigit():
+        return float(s)
+    return s
 
 class ItemSelector(BaseEstimator, TransformerMixin):
     def __init__(self, key):
@@ -88,3 +100,6 @@ class ItemSelector(BaseEstimator, TransformerMixin):
 
     def transform(self, data_dict):
         return data_dict[self.key]
+    
+    
+    
