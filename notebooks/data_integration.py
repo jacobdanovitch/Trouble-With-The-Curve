@@ -23,7 +23,7 @@ sub_dct = {
 }
 
 
-def load_twtc(fp='../data/filled_twtc_13k.csv'):
+def load_twtc(fp='../data/twtc.csv'):
     twtc = pd.read_csv(fp)
 
     twtc.report = twtc.report.str.strip().replace('', np.nan)

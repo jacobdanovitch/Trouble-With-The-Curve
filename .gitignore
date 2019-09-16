@@ -4,6 +4,7 @@ webapp/**/data/*
 **/source/*
 **/fasttext/*
 **/wip/*
+**/twtc/*
 **/.DS_Store
 
 # Byte-compiled / optimized / DLL files
