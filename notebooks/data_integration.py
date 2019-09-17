@@ -13,6 +13,11 @@ import os
 import re
 import json
 
+order = ['name', 'key_mlbam', 'key_fangraphs', 'key_bbref', 'key_bbref_minors', 'key_uuid', 'mlb_played_first',
+       'birthdate', 'debut_age',  'age', 'year', 'primary_position', 'eta', 'report', 'Arm',
+       'Changeup', 'Control', 'Curveball', 'Cutter', 'Fastball', 'Field',
+       'Hit', 'Power', 'Run', 'Slider', 'Splitter', 'source']
+
 sub_dct = {
     'ALL \(\d\)': 'UNK',
     '0': 'UNK',
@@ -38,6 +43,9 @@ def load_twtc(fp='../data/twtc.csv'):
 
     twtc = twtc[~twtc[['am_season_id', 'report']].duplicated()]
     twtc = twtc[~twtc[['fg_season_id', 'report']].duplicated()]
+    
+    twtc['primary_position'].replace('DH', '1B', inplace=True)
+    twtc['primary_position'].replace('UTIL', 'INF', inplace=True)
     
     twtc = twtc.reset_index(drop=True)
     return twtc
