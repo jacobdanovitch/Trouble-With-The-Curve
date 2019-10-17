@@ -266,7 +266,7 @@ https://github.com/abisee/attn_vis
       }
       var saturation = 100 // saturation percentage
       p = 1 - p // invert so p=0 is light and p=1 is dark
-      var min_lightness = 10 // minimum percentage lightness, i.e. darkest possible color
+      var min_lightness = 50 // minimum percentage lightness, i.e. darkest possible color
       var lightness = (min_lightness + p * (100 - min_lightness)) // lightness is proportional to p
       return sprintf('hsl(%d,%s%%,%s%%)', hue, saturation, lightness)
     }
@@ -299,9 +299,12 @@ https://github.com/abisee/attn_vis
       }
 
     async function handleUserSubmit(report, label) {
+      if(!report){
+        report = $("#textinput").val()
+      }
       let data = {
         'text': report,
-        'label': label
+        'label': label || ""
       }
       requestActivationMap(data, render);
     }
