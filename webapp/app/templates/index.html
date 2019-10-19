@@ -38,7 +38,7 @@ https://github.com/abisee/attn_vis
 
     // global variables
     json_fname = "{{url_for('static', filename='app/attentions.json')}}" // file containing the text and the weights
-    example_json_fname = "{{url_for('static', filename='app/examples.json')}}"
+    example_json_fname = "{{url_for('static', filename='app/examples2.json')}}"
 
     greenhue = 151
     yellowhue = 56
@@ -313,17 +313,20 @@ https://github.com/abisee/attn_vis
       let query = $('#playersearch').val();
       for(let i = 0; i < examples.length; i++){
         p = examples[i]
-        id = `${p.name_first} ${p.name_last} ${p.year}`;
+        id = `${p.name} ${p.year}`;
         if(query == id){
           console.log(p);
-          let label = (p.made_mlb == 1) ? 'made_mlb' : 'minor_leagues';
+          let label = (p.label == 1) ? 'MLB' : 'MiLB';
           
-          $('#textinput').val(p.report)
-          await handleUserSubmit(p.report, label);
+          $('#textinput').val(p.text)
+          await handleUserSubmit(p.text, label);
 
-          return;
+          return true;
         }
       }
+
+      //TODO: show "player not found" message
+      return false;
     }
 
   </script>
@@ -332,46 +335,9 @@ https://github.com/abisee/attn_vis
 
 <body onload="start();">
   <div id="wrap">
-    <div id="datafile">
-      Current datafile name goes here.
-    </div>
-
-    <div class="buttons">
-      <button class="ui labeled icon button" id="last">
-        <i class="left arrow icon"></i>
-        Last example
-      </button>
-      <button class="ui right labeled icon button" id="next">
-        <i class="right arrow icon"></i>
-        Next example
-      </button>
-      <select class="ui selection dropdown" multiple="" id="filter-label-select">
-        <option value="">Labels</option>
-      </select>
-      <select class="ui selection dropdown" multiple="" id="filter-pred-select">
-        <option value="">Predictions</option>
-      </select>
-      <button class="ui button" id="filter">
-        Filter
-      </button>
-      <button class="ui button right floated" id="reload">
-        <i class="redo icon"></i>
-        Reload
-      </button>
-    </div>
-
-    <div class="ui warning message hidden" id="no-data-msg">
-      <i class="close icon"></i>
-      No data was found based on the filtering criteria.
-    </div>
-
-    <h4 class="ui horizontal divider header">
-      Current example
-    </h4>
-    <h3>ID</h3>
-    <div id="textid">
-      ID goes here
-    </div>
+    <h2 class="ui horizontal divider header">
+      Trouble with the Curve
+    </h2>
     <h3>Text</h3>
     <div id="text">
       Text goes here

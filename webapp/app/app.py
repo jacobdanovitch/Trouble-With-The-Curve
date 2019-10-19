@@ -33,7 +33,7 @@ tokenizer = WordTokenizer()
 app = Flask(__name__, static_folder='../')
 
 def i2label(i):
-    return 'makes_mlb' if i == 1 else 'minor_leagues'
+    return 'MLB' if i == 1 else 'MiLB'
 
 @app.route('/')
 def index():
@@ -59,10 +59,12 @@ def activations():
         words = [str(w) for w in tokenizer.tokenize(doc)]
 
         res = requests.request("POST", SERVER_URL, data=json.dumps({'sentence': doc}), headers=SERVER_HEADERS).json()
+        print(res)
 
         pred = i2label(int(res['label']))
-        weights = res['attention_weights']
+        sentence_weights = res.get('sentence_attention')
+        word_weights = res.get('word_attention')
         
-        response = dict(words=words, weights=weights, prediction=pred, label=label)
+        response = dict(words=words, weights=word_weights, prediction=pred, label=label)
         return jsonify(response)
     return Response(status=501)
