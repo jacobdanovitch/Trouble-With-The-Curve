@@ -1,5 +1,6 @@
 import json
 import requests
+import itertools
 
 from flask import Flask
 from flask import render_template
@@ -10,9 +11,11 @@ from flask import url_for
 from flask import current_app
 
 from allennlp.data.tokenizers.word_tokenizer import WordTokenizer
+from allennlp.data.tokenizers.sentence_splitter import SpacySentenceSplitter
 
 import torch
 import pandas as pd
+import numpy as np
 
 
 SERVER_URL = "http://localhost:8000/predict"
@@ -29,6 +32,7 @@ SERVER_HEADERS = {
 }
 
 tokenizer = WordTokenizer()
+sentence_splitter = SpacySentenceSplitter()
 
 app = Flask(__name__, static_folder='../')
 
@@ -56,14 +60,23 @@ def activations():
     if request.method == 'GET':
         label = request.args.get('label')
         doc = request.args.get('text')
-        words = [str(w) for w in tokenizer.tokenize(doc)]
+        
+        sentences = sentence_splitter.split_sentences(doc)
+        tokenized_sents = (tokenizer.tokenize(sent) for sent in sentences)
+        words = [str(w) for w in itertools.chain(*tokenized_sents)]
+
 
         res = requests.request("POST", SERVER_URL, data=json.dumps({'sentence': doc}), headers=SERVER_HEADERS).json()
-        print(res)
+        
 
-        pred = i2label(int(res['label']))
+        pred = res.get('label')
+        if not pred:
+            pred = np.argmax(res.get('logits'))
+        pred = i2label(int(pred))
         sentence_weights = res.get('sentence_attention')
-        word_weights = res.get('word_attention')
+        word_weights = [w for w in itertools.chain(*res.get('word_attention')) if w != 0]
+
+        print(len(word_weights), len(words))
         
         response = dict(words=words, weights=word_weights, prediction=pred, label=label)
         return jsonify(response)

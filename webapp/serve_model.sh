@@ -1,3 +1,5 @@
+#!/bin/bash
+
 cd jdnlp;
 
 python -m allennlp.service.server_simple \
