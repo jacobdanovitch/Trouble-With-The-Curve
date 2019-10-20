@@ -7,7 +7,7 @@ This repository contains the data, models, and web app for my paper _Trouble wit
 
 ## [Data](https://github.com/jacobdanovitch/Trouble-With-The-Curve/tree/master/data)
 
-To the best of my knowledge, this is the only existing dataset of its kind for baseball prospect profiles. The data was acquired from [MLB.com](http://m.mlb.com/prospects/2019) and [FanGraphs](https://fangraphs.com). This includes rankings for top minor league players, draft prospects, international prospects, and team-specific rankings. Almost 10,000 player profiles were acquired.
+To the best of my knowledge, this is the only existing dataset of its kind for baseball prospect profiles. Almost 10,000 profiles were acquired from [MLB.com](http://m.mlb.com/prospects/2019) and [FanGraphs](https://fangraphs.com) containing players' scouting reports and 20-80 scale grades, as well as select metadata.
 
 
 ## [Models](https://github.com/jacobdanovitch/Trouble-With-The-Curve/tree/master/notebooks)
