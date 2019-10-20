@@ -3,7 +3,7 @@
 
 This repository contains the data, models, and web app for my paper _Trouble with the Curve: Predicting Future MLB Players Using Scouting Reports_.
 
-![img](notebooks/assets/img/ui.jpg)
+![img](notebooks/assets/img/ui.png)
 
 ## [Data](https://github.com/jacobdanovitch/Trouble-With-The-Curve/tree/master/data)
 
